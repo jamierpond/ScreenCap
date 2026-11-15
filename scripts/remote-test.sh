@@ -8,7 +8,7 @@ local_png="captures/${host//[@:]/-}.png"
 mkdir -p captures
 
 git archive --format=tar HEAD \
-    | ssh "$host" "mkdir -p ~/projects/ScreenCap && tar -x -C ~/projects/ScreenCap"
+    | ssh "$host" "mkdir -p ~/projects/ScreenCap && tar -xm -C ~/projects/ScreenCap"
 ssh "$host" "cd ~/projects/ScreenCap && bash scripts/capture-here.sh" \
     > captures/remote-test.log 2>&1 || { cat captures/remote-test.log; exit 1; }
 
