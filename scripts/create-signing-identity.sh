@@ -8,8 +8,23 @@ keychain="$HOME/Library/Keychains/screencap-signing.keychain-db"
 password="screencap-signing-local"
 name="ScreenCap Local Signing"
 
+trust_certificate() {
+    # Without trust, System Settings pins the grant to one build's hash instead
+    # of this certificate. Adding user trust shows one macOS password dialog.
+    local certificate
+    certificate="$(mktemp)"
+    security find-certificate -c "$name" -p "$keychain" > "$certificate"
+    if security verify-cert -q -c "$certificate" -p codeSign -k "$keychain" 2>/dev/null; then
+        rm -f "$certificate"
+        return
+    fi
+    security add-trusted-cert -r trustRoot -p codeSign -k "$keychain" "$certificate"
+    rm -f "$certificate"
+}
+
 if [[ -f "$keychain" ]]; then
     security unlock-keychain -p "$password" "$keychain"
+    trust_certificate
     exit 0
 fi
 
@@ -30,4 +45,5 @@ security set-keychain-settings "$keychain"
 security unlock-keychain -p "$password" "$keychain"
 security import "$work/identity.p12" -k "$keychain" -P "$password" -T /usr/bin/codesign
 security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k "$password" "$keychain" >/dev/null
+trust_certificate
 echo "created $keychain"

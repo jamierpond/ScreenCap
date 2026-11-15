@@ -16,7 +16,7 @@ else ()
     set(platformSource Source/Capture-Linux.cpp Source/VideoEncoder-Linux.cpp)
 endif ()
 
-add_executable(screencap Source/Main.cpp Source/Capture.cpp Source/Recorder.cpp ${platformSource})
+add_executable(screencap Source/Main.cpp Source/Capture.cpp Source/Recorder.cpp Source/Permissions.cpp ${platformSource})
 target_include_directories(screencap SYSTEM PRIVATE ThirdParty/stb)
 
 if (APPLE)
