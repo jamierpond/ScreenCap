@@ -16,23 +16,27 @@ Darwin)
     just build
     ./build/screencap --list || true
     ./build/screencap --out "$out"
+    ./build/screencap --record "$HOME/screencap-test.mp4" --seconds 3
     ;;
 MINGW* | MSYS*)
     just build
     exe="$(cygpath -w "$PWD/build/screencap.exe")"
     win_out="$(cygpath -w "$out")"
     task="screencap-test"
-    schtasks //create //f //tn "$task" //sc once //st 00:00 //it \
-        //tr "cmd /c \"\"$exe\" --out \"$win_out\" > \"$win_out.log\" 2>&1\"" > /dev/null
+    batch="$HOME/screencap-test.cmd"
+    printf '"%s" --out "%s" > "%s.log" 2>&1\r\n"%s" --record "%s.mp4" --seconds 3 >> "%s.log" 2>&1\r\necho finished >> "%s.log"\r\n' \
+        "$exe" "$win_out" "$win_out" "$exe" "$win_out" "$win_out" "$win_out" > "$batch"
+    rm -f "$out.log"
+    schtasks //create //f //tn "$task" //sc once //st 00:00 //it //tr "$(cygpath -w "$batch")" > /dev/null 2>&1
     schtasks //run //tn "$task" > /dev/null
-    for _ in $(seq 30); do [[ -f "$out" ]] && break; sleep 1; done
+    for _ in $(seq 60); do grep -q finished "$out.log" 2> /dev/null && break; sleep 1; done
     schtasks //delete //f //tn "$task" > /dev/null
     cat "$out.log" 2>/dev/null || true
     ;;
 Linux)
-    nix_packages="cmake ninja just xorg.libX11 xorg.xorgserver xterm"
+    nix_packages="cmake ninja just xorg.libX11 xorg.xorgserver xterm ffmpeg"
     run_in_tools() {
-        if command -v cmake > /dev/null && command -v Xvfb > /dev/null; then
+        if command -v cmake > /dev/null && command -v Xvfb > /dev/null && command -v ffmpeg > /dev/null; then
             bash -c "$1"
         else
             nix-shell -I nixpkgs=flake:nixpkgs -p $nix_packages --run "$1"
@@ -51,6 +55,7 @@ Linux)
         ./build/screencap --list
         ./build/screencap --window screencap-xterm --out '$HOME/screencap-test-window.png'
         ./build/screencap --out '$out'
+        ./build/screencap --record '$HOME/screencap-test.mp4' --seconds 3
         kill \${xvfb:-} 2>/dev/null || true
     "
     ;;

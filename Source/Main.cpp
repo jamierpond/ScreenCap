@@ -1,4 +1,5 @@
 #include "Capture.h"
+#include "Recorder.h"
 
 #include <chrono>
 #include <cstdio>
@@ -19,13 +20,19 @@ constexpr int exitFailed = 1;
 constexpr int exitPermissionDenied = 2;
 constexpr int exitUsage = 64;
 
+constexpr auto defaultFramesPerSecond = 15;
+
 constexpr auto usage = R"(usage: screencap [--display <n> | --window <title or app>] [--out <file.png>]
+       screencap [--display <n> | --window <title or app>] --record <file.mp4> --seconds <s>
+                 [--fps <n>]
        screencap --list
 
 Captures one display (default 1) or one window to a PNG and prints its path.
 --window matches part of a window's title or its app's name, ignoring case;
 the largest match wins. --list prints the displays and windows it can see.
 Without --out the PNG goes to the system temp folder.
+--record writes an H.264 MP4 (default 15 fps), video only for now. On Linux it
+needs ffmpeg on PATH.
 
 Exit codes: 0 ok, 1 failed, 2 screen capture not permitted (macOS), 64 usage.
 )";
@@ -35,17 +42,21 @@ struct Options
     int displayNumber = 1;
     std::optional<std::string> windowMatch;
     std::optional<fs::path> outputPath;
+    std::optional<fs::path> recordingPath;
+    double recordingSeconds = 0.0;
+    int framesPerSecond = defaultFramesPerSecond;
     bool isListRequested = false;
 };
 
-std::optional<int> parseDisplayNumber(const std::string& text)
+template <typename Number>
+std::optional<Number> parsePositiveNumber(const std::string& text)
 {
     try
     {
         auto parsedLength = std::size_t {0};
-        const auto number = std::stoi(text, &parsedLength);
+        const auto number = static_cast<Number>(std::stod(text, &parsedLength));
 
-        if (parsedLength == text.size() && number >= 1)
+        if (parsedLength == text.size() && number > 0)
             return number;
     }
     catch (...)
@@ -53,6 +64,26 @@ std::optional<int> parseDisplayNumber(const std::string& text)
     }
 
     return std::nullopt;
+}
+
+bool applyOption(Options& options, const std::string& flag, const std::string& value)
+{
+    if (flag == "--window")
+        options.windowMatch = value;
+    else if (flag == "--out" || flag == "-o")
+        options.outputPath = value;
+    else if (flag == "--record")
+        options.recordingPath = value;
+    else if (flag == "--display")
+        options.displayNumber = parsePositiveNumber<int>(value).value_or(0);
+    else if (flag == "--seconds")
+        options.recordingSeconds = parsePositiveNumber<double>(value).value_or(0.0);
+    else if (flag == "--fps")
+        options.framesPerSecond = parsePositiveNumber<int>(value).value_or(0);
+    else
+        return false;
+
+    return options.displayNumber > 0 && options.framesPerSecond > 0;
 }
 
 std::optional<Options> parseOptions(const std::vector<std::string>& args)
@@ -72,24 +103,12 @@ std::optional<Options> parseOptions(const std::vector<std::string>& args)
         if (index + 1 >= args.size())
             return std::nullopt;
 
-        const auto& value = args[++index];
-
-        if (flag == "--display")
-        {
-            const auto number = parseDisplayNumber(value);
-
-            if (!number)
-                return std::nullopt;
-
-            options.displayNumber = *number;
-        }
-        else if (flag == "--window")
-            options.windowMatch = value;
-        else if (flag == "--out" || flag == "-o")
-            options.outputPath = value;
-        else
+        if (!applyOption(options, flag, args[++index]))
             return std::nullopt;
     }
+
+    if (options.recordingPath && options.recordingSeconds <= 0.0)
+        return std::nullopt;
 
     return options;
 }
@@ -120,10 +139,36 @@ int printCaptureTargets()
     return exitOk;
 }
 
+screencap::CaptureResult captureTarget(const Options& options)
+{
+    if (options.windowMatch)
+        return screencap::captureWindow(*options.windowMatch);
+
+    return screencap::captureDisplay(options.displayNumber);
+}
+
+int recordAndWrite(const Options& options)
+{
+    const auto path = fs::absolute(*options.recordingPath);
+    const auto result = screencap::record({.path = path,
+                                           .seconds = options.recordingSeconds,
+                                           .framesPerSecond = options.framesPerSecond,
+                                           .captureFrame = [&] { return captureTarget(options); },
+                                           .audioSource = std::nullopt});
+
+    if (!result.error.empty())
+    {
+        std::fprintf(stderr, "screencap: %s\n", result.error.c_str());
+        return result.isPermissionDenied ? exitPermissionDenied : exitFailed;
+    }
+
+    std::printf("%s\n", path.string().c_str());
+    return exitOk;
+}
+
 int captureAndWrite(const Options& options)
 {
-    const auto result = options.windowMatch ? screencap::captureWindow(*options.windowMatch)
-                                            : screencap::captureDisplay(options.displayNumber);
+    const auto result = captureTarget(options);
 
     if (!result.hasImage())
     {
@@ -157,6 +202,9 @@ int main(int argc, char** argv)
 
     if (options->isListRequested)
         return printCaptureTargets();
+
+    if (options->recordingPath)
+        return recordAndWrite(*options);
 
     return captureAndWrite(*options);
 }
