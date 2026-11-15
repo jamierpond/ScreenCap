@@ -11,8 +11,9 @@ namespace screencap
 namespace
 {
 constexpr auto permissionHint =
-    "screen capture not permitted. Allow screencap in System Settings > Privacy & Security > "
-    "Screen & System Audio Recording, then run it again";
+    "screen capture not permitted. Allow ScreenCap in System Settings > Privacy & Security > "
+    "Screen & System Audio Recording (`screencap permissions` opens a window that shows how), "
+    "then run it again";
 
 struct ShareableContent
 {

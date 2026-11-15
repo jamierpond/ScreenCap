@@ -29,6 +29,7 @@ constexpr auto usage = R"(usage: screencap [--display <n> | --window <title or a
        screencap [--display <n> | --window <title or app>] --record <file.mp4> --seconds <s>
                  [--fps <n>]
        screencap --list
+       screencap permissions
        screencap remove-all-permissions
 
 Captures one display (default 1) or one window to a PNG and prints its path.
@@ -37,6 +38,9 @@ the largest match wins. --list prints the displays and windows it can see.
 Without --out the PNG goes to the system temp folder.
 --record writes an H.264 MP4 (default 15 fps), video only for now. On Linux it
 needs ffmpeg on PATH.
+permissions opens ScreenCap's Permissions window (macOS): each grant's live
+state, the app to drag into System Settings, reset and relaunch. A capture
+macOS refuses opens it too.
 remove-all-permissions removes the privacy grants screencap holds (macOS).
 
 Exit codes: 0 ok, 1 failed, 2 screen capture not permitted (macOS), 64 usage.
@@ -168,6 +172,15 @@ screencap::CaptureResult captureTarget(const Options& options)
     return screencap::captureDisplay(options.displayNumber);
 }
 
+// Exit code 2: on macOS the Permissions window opens, so the fix is in front of whoever reads this.
+int reportPermissionDenied()
+{
+#if defined(__APPLE__)
+    screencap::openPermissionsWindow();
+#endif
+    return exitPermissionDenied;
+}
+
 int recordAndWrite(const Options& options)
 {
     const auto path = fs::absolute(*options.recordingPath);
@@ -180,7 +193,7 @@ int recordAndWrite(const Options& options)
     if (!result.error.empty())
     {
         std::fprintf(stderr, "screencap: %s\n", result.error.c_str());
-        return result.isPermissionDenied ? exitPermissionDenied : exitFailed;
+        return result.isPermissionDenied ? reportPermissionDenied() : exitFailed;
     }
 
     std::printf("%s\n", path.string().c_str());
@@ -194,7 +207,7 @@ int captureAndWrite(const Options& options)
     if (!result.hasImage())
     {
         std::fprintf(stderr, "screencap: %s\n", result.error.c_str());
-        return result.isPermissionDenied ? exitPermissionDenied : exitFailed;
+        return result.isPermissionDenied ? reportPermissionDenied() : exitFailed;
     }
 
     const auto path = fs::absolute(options.outputPath.value_or(createDefaultOutputPath()));
@@ -212,15 +225,22 @@ int captureAndWrite(const Options& options)
 
 int main(int argc, char** argv)
 {
-    if (argc == 2 && std::string(argv[1]) == "remove-all-permissions")
+    const auto args = std::vector<std::string>(argv + 1, argv + argc);
+
+    if (args == std::vector<std::string> {"remove-all-permissions"})
         return screencap::removeAllPermissions();
+
+    if (args == std::vector<std::string> {screencap::permissionsCommand, screencap::permissionsWindowFlag})
+        return screencap::runPermissionsWindow();
+
+    if (args == std::vector<std::string> {screencap::permissionsCommand})
+        return screencap::openPermissionsWindow();
 
 #if defined(__APPLE__)
     if (const auto childExitCode = screencap::runAsResponsibleProcess(argv))
         return *childExitCode;
 #endif
 
-    const auto args = std::vector<std::string>(argv + 1, argv + argc);
     const auto options = parseOptions(args);
 
     if (!options)

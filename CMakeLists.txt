@@ -1,5 +1,12 @@
 cmake_minimum_required(VERSION 3.25)
 
+# macOS only: the Permissions window comes from Rudder's PermissionsPanel on
+# eacp, both fetched by lockstep. Windows and Linux stay a plain command line
+# with no dependencies.
+if (CMAKE_HOST_APPLE)
+    set(CMAKE_PROJECT_TOP_LEVEL_INCLUDES ${CMAKE_CURRENT_LIST_DIR}/cmake/lockstep.cmake)
+endif ()
+
 project(ScreenCap VERSION 0.1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
@@ -9,14 +16,32 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 if (APPLE)
     enable_language(OBJCXX)
     set(CMAKE_OSX_DEPLOYMENT_TARGET 14.0)
-    set(platformSource Source/Capture-macOS.mm Source/VideoEncoder-macOS.mm Source/Responsibility-macOS.cpp)
+    set(platformSource Source/Capture-macOS.mm Source/VideoEncoder-macOS.mm Source/Responsibility-macOS.cpp
+            Source/Permissions-macOS.cpp)
+
+    lockstep_add_package(
+            NAME eacp
+            GITHUB_REPOSITORY eyalamirmusic/eacp
+            GIT_TAG develop
+            SYSTEM YES
+            OPTIONS
+                "EACP_ENABLE_EXAMPLES OFF"
+                "EACP_ENABLE_TESTS OFF")
+
+    # Work against a local Rudder checkout with:
+    #   cmake -B build -DLOCKSTEP_Rudder_SOURCE=$HOME/projects/Rudder
+    lockstep_add_package(
+            NAME Rudder
+            GITHUB_REPOSITORY jamierpond/Rudder
+            GIT_TAG main
+            OPTIONS "RUDDER_CLIENT_ONLY ON")
 elseif (WIN32)
-    set(platformSource Source/Capture-Windows.cpp Source/VideoEncoder-Windows.cpp)
+    set(platformSource Source/Capture-Windows.cpp Source/VideoEncoder-Windows.cpp Source/Permissions-Default.cpp)
 else ()
-    set(platformSource Source/Capture-Linux.cpp Source/VideoEncoder-Linux.cpp)
+    set(platformSource Source/Capture-Linux.cpp Source/VideoEncoder-Linux.cpp Source/Permissions-Default.cpp)
 endif ()
 
-add_executable(screencap Source/Main.cpp Source/Capture.cpp Source/Recorder.cpp Source/Permissions.cpp ${platformSource})
+add_executable(screencap Source/Main.cpp Source/Capture.cpp Source/Recorder.cpp ${platformSource})
 target_include_directories(screencap SYSTEM PRIVATE ThirdParty/stb)
 
 if (APPLE)
@@ -33,7 +58,8 @@ if (APPLE)
     target_compile_options(screencap PRIVATE $<$<COMPILE_LANGUAGE:OBJCXX>:-fobjc-arc>)
     target_link_libraries(screencap PRIVATE
             "-framework Foundation" "-framework CoreGraphics" "-framework ScreenCaptureKit"
-            "-framework AVFoundation" "-framework CoreVideo" "-framework CoreMedia")
+            "-framework AVFoundation" "-framework CoreVideo" "-framework CoreMedia"
+            PermissionsPanel eacp-ui)
 elseif (WIN32)
     target_compile_definitions(screencap PRIVATE UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN)
     target_link_libraries(screencap PRIVATE user32 gdi32 dwmapi shcore ole32 mfplat mfreadwrite mfuuid)
