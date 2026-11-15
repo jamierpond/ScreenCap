@@ -1,3 +1,4 @@
+#include "DesktopSession.h"
 #include "Responsibility.h"
 
 #include <cstdint>
@@ -83,5 +84,10 @@ std::optional<int> runAsResponsibleProcess(char** argv)
         return std::nullopt;
 
     return waitForExitCode(child);
+}
+
+std::optional<int> runInUserDesktopSession(char** argv)
+{
+    return runAsResponsibleProcess(argv);
 }
 } // namespace screencap

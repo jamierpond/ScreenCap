@@ -70,8 +70,7 @@ CaptureResult captureWith(int width, int height, DrawInto drawInto)
     if (drawInto(memory, screen))
         result.image = readBitmapPixels(memory, bitmap, width, height);
     else
-        result.error = "the desktop could not be copied (no interactive desktop? over ssh, "
-                       "run screencap from a scheduled task in the logged-in session)";
+        result.error = "the desktop could not be copied (is the screen locked or the user logged out?)";
 
     SelectObject(memory, previous);
     DeleteObject(bitmap);

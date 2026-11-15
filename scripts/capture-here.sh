@@ -1,37 +1,20 @@
 #!/usr/bin/env bash
 # Builds screencap on this machine and captures display 1 the way this OS
 # allows from an ssh session, printing "CAPTURED <path>".
-#   macOS:   runs it directly (the grant belongs to whatever started sshd).
-#   Windows: runs it as a scheduled task in the logged-in user's desktop
-#            session; an ssh session has no desktop to copy.
-#   Linux:   uses the user's X11 display if one is set, else starts Xvfb
-#            with an xterm on it. Tools come from nix-shell when not installed.
+#   macOS, Windows: runs it directly; screencap reaches the logged-in desktop itself.
+#   Linux:   screencap finds the logged-in user's X11 display; with nobody logged in
+#            this starts Xvfb with an xterm on it. Tools come from nix-shell when not installed.
 set -euo pipefail
 
 out="$HOME/screencap-test.png"
 rm -f "$out"
 
 case "$(uname -s)" in
-Darwin)
+Darwin | MINGW* | MSYS*)
     just build
     ./build/screencap --list || true
     ./build/screencap --out "$out"
     ./build/screencap --record "$HOME/screencap-test.mp4" --seconds 3
-    ;;
-MINGW* | MSYS*)
-    just build
-    exe="$(cygpath -w "$PWD/build/screencap.exe")"
-    win_out="$(cygpath -w "$out")"
-    task="screencap-test"
-    batch="$HOME/screencap-test.cmd"
-    printf '"%s" --out "%s" > "%s.log" 2>&1\r\n"%s" --record "%s.mp4" --seconds 3 >> "%s.log" 2>&1\r\necho finished >> "%s.log"\r\n' \
-        "$exe" "$win_out" "$win_out" "$exe" "$win_out" "$win_out" "$win_out" > "$batch"
-    rm -f "$out.log"
-    schtasks //create //f //tn "$task" //sc once //st 00:00 //it //tr "$(cygpath -w "$batch")" > /dev/null 2>&1
-    schtasks //run //tn "$task" > /dev/null
-    for _ in $(seq 60); do grep -q finished "$out.log" 2> /dev/null && break; sleep 1; done
-    schtasks //delete //f //tn "$task" > /dev/null
-    cat "$out.log" 2>/dev/null || true
     ;;
 Linux)
     nix_packages="cmake ninja just xorg.libX11 xorg.xorgserver xterm ffmpeg"
@@ -45,7 +28,7 @@ Linux)
     run_in_tools "
         set -euo pipefail
         just build
-        if [[ -z \"\${DISPLAY:-}\" ]]; then
+        if ! ./build/screencap --list > /dev/null 2>&1; then
             Xvfb :77 -screen 0 1280x800x24 > /dev/null 2>&1 & xvfb=\$!
             export DISPLAY=:77
             sleep 1

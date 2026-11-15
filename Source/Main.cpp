@@ -1,7 +1,7 @@
 #include "Capture.h"
+#include "DesktopSession.h"
 #include "Permissions.h"
 #include "Recorder.h"
-#include "Responsibility.h"
 
 #include <algorithm>
 #include <chrono>
@@ -236,10 +236,8 @@ int main(int argc, char** argv)
     if (args == std::vector<std::string> {screencap::permissionsCommand})
         return screencap::openPermissionsWindow();
 
-#if defined(__APPLE__)
-    if (const auto childExitCode = screencap::runAsResponsibleProcess(argv))
+    if (const auto childExitCode = screencap::runInUserDesktopSession(argv))
         return *childExitCode;
-#endif
 
     const auto options = parseOptions(args);
 

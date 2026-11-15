@@ -36,9 +36,11 @@ if (APPLE)
             GIT_TAG main
             OPTIONS "RUDDER_CLIENT_ONLY ON")
 elseif (WIN32)
-    set(platformSource Source/Capture-Windows.cpp Source/VideoEncoder-Windows.cpp Source/Permissions-Default.cpp)
+    set(platformSource Source/Capture-Windows.cpp Source/VideoEncoder-Windows.cpp Source/Permissions-Default.cpp
+            Source/DesktopSession-Windows.cpp)
 else ()
-    set(platformSource Source/Capture-Linux.cpp Source/VideoEncoder-Linux.cpp Source/Permissions-Default.cpp)
+    set(platformSource Source/Capture-Linux.cpp Source/VideoEncoder-Linux.cpp Source/Permissions-Default.cpp
+            Source/DesktopSession-Linux.cpp)
 endif ()
 
 add_executable(screencap Source/Main.cpp Source/Capture.cpp Source/Recorder.cpp ${platformSource})
