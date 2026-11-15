@@ -46,17 +46,17 @@ Linux)
         set -euo pipefail
         just build
         if [[ -z \"\${DISPLAY:-}\" ]]; then
-            Xvfb :77 -screen 0 1280x800x24 & xvfb=\$!
+            Xvfb :77 -screen 0 1280x800x24 > /dev/null 2>&1 & xvfb=\$!
             export DISPLAY=:77
             sleep 1
-            xterm -geometry 80x24+100+100 -title screencap-xterm -e 'echo hello from screencap; sleep 30' &
+            xterm -geometry 80x24+100+100 -title screencap-xterm -e 'echo hello from screencap; sleep 30' > /dev/null 2>&1 & xterm=\$!
             sleep 2
         fi
         ./build/screencap --list
         ./build/screencap --window screencap-xterm --out '$HOME/screencap-test-window.png'
         ./build/screencap --out '$out'
         ./build/screencap --record '$HOME/screencap-test.mp4' --seconds 3
-        kill \${xvfb:-} 2>/dev/null || true
+        kill \${xterm:-} \${xvfb:-} 2>/dev/null || true
     "
     ;;
 esac
