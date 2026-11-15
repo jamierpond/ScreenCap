@@ -12,7 +12,7 @@ constexpr int exitOk = 0;
 constexpr int exitFailed = 1;
 
 #if defined(__APPLE__)
-constexpr auto bundleIdentifier = "com.pond.screencap";
+constexpr auto bundleIdentifier = "audio.pond.screencap";
 constexpr auto manualStep =
     "remove screencap by hand: System Settings > Privacy & Security > Screen & System Audio "
     "Recording, select screencap, click the minus (-) button\n";
