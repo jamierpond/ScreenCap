@@ -188,6 +188,8 @@ CaptureResult captureWindow(const std::string& titleOrAppName)
         if (window == nil)
             return {.error = "no window matches \"" + titleOrAppName + "\" (screencap --list)"};
 
+        // SCContentFilter's window initialiser asserts unless a WindowServer connection exists.
+        CGMainDisplayID();
         auto* filter = [[SCContentFilter alloc] initWithDesktopIndependentWindow:window];
         return captureFilter(filter);
     }
