@@ -1,6 +1,7 @@
 #include "Capture.h"
 #include "Recorder.h"
 
+#include <algorithm>
 #include <chrono>
 #include <cstdio>
 #include <filesystem>
@@ -66,23 +67,39 @@ std::optional<Number> parsePositiveNumber(const std::string& text)
     return std::nullopt;
 }
 
+using OptionSetter = void (*)(Options&, const std::string&);
+
+struct OptionFlag
+{
+    const char* flag;
+    OptionSetter apply;
+};
+
+constexpr OptionFlag optionFlags[] = {
+    {"--window", [](Options& options, const std::string& value) { options.windowMatch = value; }},
+    {"--out", [](Options& options, const std::string& value) { options.outputPath = value; }},
+    {"-o", [](Options& options, const std::string& value) { options.outputPath = value; }},
+    {"--record", [](Options& options, const std::string& value) { options.recordingPath = value; }},
+    {"--display",
+     [](Options& options, const std::string& value)
+     { options.displayNumber = parsePositiveNumber<int>(value).value_or(0); }},
+    {"--seconds",
+     [](Options& options, const std::string& value)
+     { options.recordingSeconds = parsePositiveNumber<double>(value).value_or(0.0); }},
+    {"--fps",
+     [](Options& options, const std::string& value)
+     { options.framesPerSecond = parsePositiveNumber<int>(value).value_or(0); }},
+};
+
 bool applyOption(Options& options, const std::string& flag, const std::string& value)
 {
-    if (flag == "--window")
-        options.windowMatch = value;
-    else if (flag == "--out" || flag == "-o")
-        options.outputPath = value;
-    else if (flag == "--record")
-        options.recordingPath = value;
-    else if (flag == "--display")
-        options.displayNumber = parsePositiveNumber<int>(value).value_or(0);
-    else if (flag == "--seconds")
-        options.recordingSeconds = parsePositiveNumber<double>(value).value_or(0.0);
-    else if (flag == "--fps")
-        options.framesPerSecond = parsePositiveNumber<int>(value).value_or(0);
-    else
+    const auto* found = std::find_if(std::begin(optionFlags), std::end(optionFlags),
+                                     [&](const OptionFlag& option) { return flag == option.flag; });
+
+    if (found == std::end(optionFlags))
         return false;
 
+    found->apply(options, value);
     return options.displayNumber > 0 && options.framesPerSecond > 0;
 }
 
