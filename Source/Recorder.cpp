@@ -41,6 +41,37 @@ long long countFramesDue(Clock::time_point start, int framesPerSecond)
     const auto elapsed = std::chrono::duration<double>(Clock::now() - start).count();
     return static_cast<long long>(elapsed * framesPerSecond) + 1;
 }
+// A capture slower than the frame rate repeats the last frame, so the video keeps real time.
+std::string writeFramesInRealTime(const RecordingSettings& settings,
+                                  VideoEncoder& encoder,
+                                  Image frame)
+{
+    const auto totalFrames = static_cast<long long>(settings.seconds * settings.framesPerSecond);
+    const auto frameInterval = std::chrono::duration<double>(1.0 / settings.framesPerSecond);
+    const auto start = Clock::now();
+    auto frameIndex = 0LL;
+
+    while (frameIndex < totalFrames)
+    {
+        const auto framesDue = std::min(countFramesDue(start, settings.framesPerSecond), totalFrames);
+
+        for (; frameIndex < framesDue; ++frameIndex)
+        {
+            if (!encoder.appendFrame(frame, frameIndex))
+                return "the encoder refused frame " + std::to_string(frameIndex);
+        }
+
+        if (settings.audioSource)
+            encoder.appendAudio(settings.audioSource->get().takeAvailableSamples());
+
+        std::this_thread::sleep_until(start + frameIndex * frameInterval);
+
+        if (auto capture = settings.captureFrame(); capture.hasImage())
+            frame = cropToSize(capture.image, frame.width, frame.height);
+    }
+
+    return {};
+}
 } // namespace
 
 RecordingResult record(const RecordingSettings& settings)
@@ -63,31 +94,11 @@ RecordingResult record(const RecordingSettings& settings)
     if (!created.encoder)
         return {created.error};
 
-    const auto totalFrames = static_cast<long long>(settings.seconds * settings.framesPerSecond);
-    const auto frameInterval = std::chrono::duration<double>(1.0 / settings.framesPerSecond);
-    const auto start = Clock::now();
-    auto frame = cropToSize(firstCapture.image, width, height);
-    auto frameIndex = 0LL;
+    const auto error = writeFramesInRealTime(settings, *created.encoder,
+                                             cropToSize(firstCapture.image, width, height));
 
-    while (frameIndex < totalFrames)
-    {
-        // A capture slower than the frame rate repeats the last frame, so the video keeps real time.
-        const auto framesDue = std::min(countFramesDue(start, settings.framesPerSecond), totalFrames);
-
-        for (; frameIndex < framesDue; ++frameIndex)
-        {
-            if (!created.encoder->appendFrame(frame, frameIndex))
-                return {"the encoder refused frame " + std::to_string(frameIndex)};
-        }
-
-        if (settings.audioSource)
-            created.encoder->appendAudio(settings.audioSource->get().takeAvailableSamples());
-
-        std::this_thread::sleep_until(start + frameIndex * frameInterval);
-
-        if (auto capture = settings.captureFrame(); capture.hasImage())
-            frame = cropToSize(capture.image, width, height);
-    }
+    if (!error.empty())
+        return {error};
 
     if (!created.encoder->finish())
         return {"the encoder could not finish " + settings.path.string()};

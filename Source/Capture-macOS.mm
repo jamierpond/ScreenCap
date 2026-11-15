@@ -129,8 +129,7 @@ bool isWindowMatch(SCWindow* window, const std::string& titleOrAppName)
     if (window.windowLayer != normalWindowLayer)
         return false;
 
-    return containsIgnoringCase(getTitle(window), titleOrAppName)
-           || containsIgnoringCase(getAppName(window), titleOrAppName);
+    return isTitleOrAppNameMatch(getTitle(window), getAppName(window), titleOrAppName);
 }
 
 SCWindow* findLargestMatchingWindow(SCShareableContent* content, const std::string& titleOrAppName)

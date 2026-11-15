@@ -32,4 +32,8 @@ CaptureResult captureWindow(const std::string& titleOrAppName);
 std::vector<std::string> listCaptureTargets();
 
 bool containsIgnoringCase(const std::string& text, const std::string& part);
+
+bool isTitleOrAppNameMatch(const std::string& title,
+                           const std::string& appName,
+                           const std::string& titleOrAppName);
 } // namespace screencap

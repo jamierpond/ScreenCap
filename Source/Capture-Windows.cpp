@@ -139,6 +139,11 @@ bool isCloakedWindow(HWND window)
     return cloaked != 0;
 }
 
+bool isShownWindow(HWND window)
+{
+    return IsWindowVisible(window) && !isCloakedWindow(window);
+}
+
 std::vector<WindowInfo> listVisibleWindows()
 {
     auto windows = std::vector<WindowInfo> {};
@@ -146,7 +151,7 @@ std::vector<WindowInfo> listVisibleWindows()
     {
         const auto titleLength = GetWindowTextLengthW(handle);
 
-        if (!IsWindowVisible(handle) || titleLength == 0 || isCloakedWindow(handle))
+        if (!isShownWindow(handle) || titleLength == 0)
             return TRUE;
 
         auto title = std::wstring(static_cast<std::size_t>(titleLength) + 1, L'\0');
@@ -173,10 +178,10 @@ std::optional<WindowInfo> findLargestMatchingWindow(const std::string& titleOrAp
 
     for (const auto& window: listVisibleWindows())
     {
-        const auto isMatch = containsIgnoringCase(window.title, titleOrAppName)
-                             || containsIgnoringCase(window.appName, titleOrAppName);
+        if (!isTitleOrAppNameMatch(window.title, window.appName, titleOrAppName))
+            continue;
 
-        if (isMatch && (!largest || getArea(window.bounds) > getArea(largest->bounds)))
+        if (!largest || getArea(window.bounds) > getArea(largest->bounds))
             largest = window;
     }
 

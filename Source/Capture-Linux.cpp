@@ -37,6 +37,14 @@ public:
     Display* display;
 };
 
+struct ScreenRect
+{
+    int x = 0;
+    int y = 0;
+    int width = 0;
+    int height = 0;
+};
+
 struct WindowInfo
 {
     Window handle {};
@@ -65,13 +73,15 @@ std::uint8_t readChannel(unsigned long pixel, unsigned long mask)
     return static_cast<std::uint8_t>(value * channelMaximum / maximum);
 }
 
-CaptureResult captureRootRect(Display* display, int screen, int x, int y, int width, int height)
+CaptureResult captureRootRect(Display* display, int screen, const ScreenRect& rect)
 {
+    const auto width = rect.width;
+    const auto height = rect.height;
     constexpr auto bytesPerPixel = 4;
     constexpr auto opaque = std::uint8_t {255};
 
     const auto root = RootWindow(display, screen);
-    auto* ximage = XGetImage(display, root, x, y, static_cast<unsigned>(width),
+    auto* ximage = XGetImage(display, root, rect.x, rect.y, static_cast<unsigned>(width),
                              static_cast<unsigned>(height), AllPlanes, ZPixmap);
 
     if (ximage == nullptr)
@@ -175,11 +185,10 @@ std::optional<WindowInfo> findLargestMatchingWindow(Display* display,
 
     for (const auto& window: listNamedWindows(display))
     {
-        const auto isMatch = containsIgnoringCase(window.title, titleOrAppName)
-                             || containsIgnoringCase(window.appName, titleOrAppName);
-        const auto area = window.width * window.height;
+        if (!isTitleOrAppNameMatch(window.title, window.appName, titleOrAppName))
+            continue;
 
-        if (isMatch && (!largest || area > largest->width * largest->height))
+        if (!largest || window.width * window.height > largest->width * largest->height)
             largest = window;
     }
 
@@ -203,9 +212,9 @@ CaptureResult captureDisplay(int displayNumber)
         return {.error = "no display " + std::to_string(displayNumber) + " (screencap --list)"};
 
     const auto screen = displayNumber - 1;
-    return captureRootRect(connection.display, screen, 0, 0,
-                           DisplayWidth(connection.display, screen),
-                           DisplayHeight(connection.display, screen));
+    const auto wholeScreen = ScreenRect {0, 0, DisplayWidth(connection.display, screen),
+                                         DisplayHeight(connection.display, screen)};
+    return captureRootRect(connection.display, screen, wholeScreen);
 }
 
 CaptureResult captureWindow(const std::string& titleOrAppName)
@@ -231,7 +240,7 @@ CaptureResult captureWindow(const std::string& titleOrAppName)
     if (right <= left || bottom <= top)
         return {.error = "window \"" + window->title + "\" is off screen"};
 
-    return captureRootRect(connection.display, screen, left, top, right - left, bottom - top);
+    return captureRootRect(connection.display, screen, {left, top, right - left, bottom - top});
 }
 
 std::vector<std::string> listCaptureTargets()

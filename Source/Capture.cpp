@@ -17,4 +17,12 @@ bool containsIgnoringCase(const std::string& text, const std::string& part)
     return std::search(text.begin(), text.end(), part.begin(), part.end(), isSameLetter)
            != text.end();
 }
+
+bool isTitleOrAppNameMatch(const std::string& title,
+                           const std::string& appName,
+                           const std::string& titleOrAppName)
+{
+    return containsIgnoringCase(title, titleOrAppName)
+           || containsIgnoringCase(appName, titleOrAppName);
+}
 } // namespace screencap
