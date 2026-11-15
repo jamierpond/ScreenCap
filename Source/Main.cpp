@@ -1,5 +1,6 @@
 #include "Capture.h"
 #include "Recorder.h"
+#include "Responsibility.h"
 
 #include <algorithm>
 #include <chrono>
@@ -208,6 +209,11 @@ int captureAndWrite(const Options& options)
 
 int main(int argc, char** argv)
 {
+#if defined(__APPLE__)
+    if (const auto childExitCode = screencap::runAsResponsibleProcess(argv))
+        return *childExitCode;
+#endif
+
     const auto args = std::vector<std::string>(argv + 1, argv + argc);
     const auto options = parseOptions(args);
 

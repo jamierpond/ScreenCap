@@ -11,5 +11,8 @@ if [[ -f "$build_dir/screencap.exe" ]]; then
     echo "$target/screencap.exe"
 else
     cp "$build_dir/screencap" "$target/screencap"
+    if [[ "$(uname)" == "Darwin" ]]; then
+        bash "$(dirname "$0")/sign-macos.sh" "$target/screencap"
+    fi
     echo "$target/screencap"
 fi
