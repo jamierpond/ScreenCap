@@ -56,4 +56,4 @@ Linux)
     ;;
 esac
 
-[[ -f "$out" ]] && echo "CAPTURED $out"
+[[ -f "$out" ]] && echo "CAPTURED ${out#"$HOME"/}"
