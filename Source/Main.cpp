@@ -319,9 +319,6 @@ int main(int argc, char** argv)
     if (const auto commandExitCode = runNamedCommand(args))
         return *commandExitCode;
 
-    if (const auto childExitCode = screencap::runInUserDesktopSession(argv))
-        return *childExitCode;
-
     const auto options = parseOptions(args);
 
     if (!options)
@@ -329,6 +326,9 @@ int main(int argc, char** argv)
         std::fputs(usage, stderr);
         return exitUsage;
     }
+
+    if (const auto childExitCode = screencap::runInUserDesktopSession(argv))
+        return *childExitCode;
 
     if (options->isListRequested)
         return printCaptureTargets();
