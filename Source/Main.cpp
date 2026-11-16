@@ -231,10 +231,8 @@ int captureAndWrite(const Options& options)
 constexpr auto testCaptureFileName = "screencap-setup-test.png";
 
 constexpr auto permissionMissingAfterSetup =
-    "screencap setup: capturing does not work yet: macOS has not allowed ScreenCap to record the screen. "
-    "Someone at this Mac must turn on ScreenCap in System Settings > Privacy & Security > Screen & System "
-    "Audio Recording (ScreenCap's Permissions window is now open on its screen), then run screencap setup "
-    "again.\n";
+    "screencap setup: capturing does not work yet: allow ScreenCap as the line above says (its "
+    "Permissions window is now open on this Mac's screen), then run screencap setup again.\n";
 
 // Captures display 1 the way a plain `screencap --out` would, through the same route to the user's desktop.
 int takeTestCapture(const fs::path& executable, const fs::path& path)
