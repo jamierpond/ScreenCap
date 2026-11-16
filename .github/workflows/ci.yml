@@ -18,8 +18,19 @@ jobs:
             os: ubuntu-24.04
     name: ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
+    env:
+      LOCKSTEP_CACHE: ${{ github.workspace }}/.lockstep-cache
     steps:
       - uses: actions/checkout@v4
+
+      # lockstep's cache holds the package sources and the library cache, so a
+      # run with an unchanged lock compiles none of the packages again.
+      - uses: actions/cache/restore@v4
+        id: lockstep-cache
+        with:
+          path: .lockstep-cache
+          key: lockstep-${{ matrix.os }}-${{ hashFiles('lockstep.lock', 'cmake/lockstep.cmake') }}
+
       - uses: extractions/setup-just@v2
       - uses: ilammy/msvc-dev-cmd@v1
         if: runner.os == 'Windows'
@@ -32,6 +43,14 @@ jobs:
       - run: just build
       - run: ./build/screencap --help || test $? -eq 64
         shell: bash
+
+      # Saved even when a later step fails, so the next run still finds the packages
+      # and libraries this one built.
+      - uses: actions/cache/save@v4
+        if: always() && steps.lockstep-cache.outputs.cache-hit != 'true'
+        with:
+          path: .lockstep-cache
+          key: ${{ steps.lockstep-cache.outputs.cache-primary-key }}
 
   codehealth:
     name: Code Health
