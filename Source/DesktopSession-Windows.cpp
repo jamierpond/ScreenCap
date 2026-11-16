@@ -112,10 +112,13 @@ bool runSchtasks(const std::string& arguments)
     return exitCode == 0;
 }
 
+// A plain console program run by the task opens a terminal window on the user's desktop, which then covers
+// what screencap captures; conhost --headless gives the batch file a console without any window.
 bool createTask(const SessionFiles& files)
 {
-    return runSchtasks(std::string("/create /f /tn ") + taskName + " /sc once /st 00:00 /it /tr "
-                       + quoteForBatchFile(files.batch.string()));
+    const auto windowlessCommand = "conhost.exe --headless \\\"" + files.batch.string() + "\\\"";
+    return runSchtasks(std::string("/create /f /tn ") + taskName + " /sc once /st 00:00 /it /tr \"" + windowlessCommand
+                       + "\"");
 }
 
 bool startTask()
@@ -155,6 +158,7 @@ int runAsScheduledTask(const SessionFiles& files)
 {
     if (!createTask(files) || !startTask())
     {
+        deleteTask();
         std::fputs("screencap: no desktop here (ssh runs in session 0) and the scheduled task that runs "
                    "screencap in the logged-in user's desktop could not start. Is that user logged in?\n",
                    stderr);
