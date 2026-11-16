@@ -64,7 +64,7 @@ if (APPLE)
             PermissionsPanel eacp-ui)
 elseif (WIN32)
     target_compile_definitions(screencap PRIVATE UNICODE _UNICODE NOMINMAX WIN32_LEAN_AND_MEAN)
-    target_link_libraries(screencap PRIVATE user32 gdi32 dwmapi shcore ole32 mfplat mfreadwrite mfuuid)
+    target_link_libraries(screencap PRIVATE user32 gdi32 dwmapi shcore ole32 mfplat mfreadwrite mfuuid wtsapi32)
 else ()
     find_package(X11 REQUIRED)
     # X11::X11 carries only the directory holding X11/X.h. Under nix that is xorgproto, and Xlib.h lives in libx11.

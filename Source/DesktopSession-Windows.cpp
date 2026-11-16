@@ -125,7 +125,7 @@ bool startTask()
 
 void deleteTask()
 {
-    deleteTask();
+    runSchtasks(std::string("/delete /f /tn ") + taskName);
 }
 
 bool waitForFile(const fs::path& path)

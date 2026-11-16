@@ -40,9 +40,11 @@ the largest match wins. --list prints the displays and windows it can see.
 Without --out the PNG goes to the system temp folder.
 --record writes an H.264 MP4 (default 15 fps), video only for now. On Linux it
 needs ffmpeg on PATH.
-setup readies this machine for capture. Linux: installs a virtual X11 desktop on
-DISPLAY=:90 that runs at boot with nobody logged in (needs nix). macOS: the same
-as permissions. Windows: nothing to do.
+setup checks what this machine needs to capture, fixes what it can, says what a
+person must do for the rest, then takes a test capture. Linux: installs a
+virtual X11 desktop on DISPLAY=:90 that runs at boot with nobody logged in
+(needs nix). macOS and Windows: checks you are logged in to the desktop; macOS
+also checks the Screen Recording permission.
 permissions opens ScreenCap's Permissions window (macOS): each grant's live
 state, the app to drag into System Settings, reset and relaunch. A capture
 macOS refuses opens it too.
@@ -226,6 +228,56 @@ int captureAndWrite(const Options& options)
     std::printf("%s\n", path.string().c_str());
     return exitOk;
 }
+constexpr auto testCaptureFileName = "screencap-setup-test.png";
+
+constexpr auto permissionMissingAfterSetup =
+    "screencap setup: capturing does not work yet: macOS has not allowed ScreenCap to record the screen. "
+    "Someone at this Mac must turn on ScreenCap in System Settings > Privacy & Security > Screen & System "
+    "Audio Recording (ScreenCap's Permissions window is now open on its screen), then run screencap setup "
+    "again.\n";
+
+// Captures display 1 the way a plain `screencap --out` would, through the same route to the user's desktop.
+int takeTestCapture(const fs::path& executable, const fs::path& path)
+{
+    auto arguments = std::vector<std::string> {executable.string(), "--out", path.string()};
+    auto argumentPointers = std::vector<char*> {};
+
+    for (auto& argument: arguments)
+        argumentPointers.push_back(argument.data());
+
+    argumentPointers.push_back(nullptr);
+
+    if (const auto childExitCode = screencap::runInUserDesktopSession(argumentPointers.data()))
+        return *childExitCode;
+
+    auto options = Options {};
+    options.outputPath = path;
+    return captureAndWrite(options);
+}
+
+int runSetup(const fs::path& executable)
+{
+    const auto preparedExitCode = screencap::prepareMachineForCapture();
+
+    if (preparedExitCode != exitOk)
+    {
+        std::fputs("screencap setup: capturing does not work yet: do what the message above says\n", stderr);
+        return preparedExitCode;
+    }
+
+    std::puts("screencap setup: taking a test capture of display 1");
+    const auto exitCode = takeTestCapture(executable, fs::temp_directory_path() / testCaptureFileName);
+
+    if (exitCode == exitOk)
+        std::puts("screencap setup: capturing works; the test capture is the PNG named above");
+    else if (exitCode == exitPermissionDenied)
+        std::fputs(permissionMissingAfterSetup, stderr);
+    else
+        std::fputs("screencap setup: capturing does not work yet: the test capture failed with the error above\n", stderr);
+
+    return exitCode;
+}
+
 struct NamedCommand
 {
     std::vector<std::string> arguments;
@@ -235,7 +287,6 @@ struct NamedCommand
 std::optional<int> runNamedCommand(const std::vector<std::string>& args)
 {
     const auto commands = std::vector<NamedCommand> {
-        {{screencap::setupCommand}, screencap::prepareMachineForCapture},
         {{"remove-all-permissions"}, screencap::removeAllPermissions},
         {{screencap::permissionsCommand, screencap::permissionsWindowFlag}, screencap::runPermissionsWindow},
         {{screencap::permissionsCommand}, screencap::openPermissionsWindow},
@@ -254,6 +305,9 @@ std::optional<int> runNamedCommand(const std::vector<std::string>& args)
 int main(int argc, char** argv)
 {
     const auto args = std::vector<std::string>(argv + 1, argv + argc);
+
+    if (args == std::vector<std::string> {screencap::setupCommand})
+        return runSetup(fs::path {argv[0]});
 
     if (const auto commandExitCode = runNamedCommand(args))
         return *commandExitCode;
