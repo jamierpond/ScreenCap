@@ -44,6 +44,11 @@ else ()
 endif ()
 
 add_executable(screencap Source/Main.cpp Source/Capture.cpp Source/Recorder.cpp ${platformSource})
+
+# A copy of Rudder's: Windows and Linux builds don't fetch Rudder.
+include(cmake/PondVersion.cmake)
+pond_add_version_library(ScreenCapVersion)
+target_link_libraries(screencap PRIVATE ScreenCapVersion)
 target_include_directories(screencap SYSTEM PRIVATE ThirdParty/stb)
 
 if (APPLE)

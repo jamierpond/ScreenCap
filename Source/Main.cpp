@@ -4,6 +4,8 @@
 #include "Recorder.h"
 #include "Setup.h"
 
+#include <PondVersion.h>
+
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
@@ -33,6 +35,7 @@ constexpr auto usage = R"(usage: screencap [--display <n> | --window <title or a
        screencap setup
        screencap permissions
        screencap remove-all-permissions
+       screencap --version
 
 Captures one display (default 1) or one window to a PNG and prints its path.
 --window matches part of a window's title or its app's name, ignoring case;
@@ -49,6 +52,7 @@ permissions opens ScreenCap's Permissions window (macOS): each grant's live
 state, the app to drag into System Settings, reset and relaunch. A capture
 macOS refuses opens it too.
 remove-all-permissions removes the privacy grants screencap holds (macOS).
+--version prints screencap's version and the commit it was built from.
 
 Exit codes: 0 ok, 1 failed, 2 screen capture not permitted (macOS), 64 usage.
 )";
@@ -285,6 +289,12 @@ int runSetup(const fs::path& executable)
     return exitCode;
 }
 
+int printVersion()
+{
+    std::printf("screencap %s\n", pond::getVersionString().c_str());
+    return exitOk;
+}
+
 struct NamedCommand
 {
     std::vector<std::string> arguments;
@@ -295,6 +305,7 @@ std::optional<int> runNamedCommand(const std::vector<std::string>& args)
 {
     const auto commands = std::vector<NamedCommand> {
         {{"remove-all-permissions"}, screencap::removeAllPermissions},
+        {{"--version"}, printVersion},
         {{screencap::permissionsCommand, screencap::permissionsWindowFlag}, screencap::runPermissionsWindow},
         {{screencap::permissionsCommand}, screencap::openPermissionsWindow},
     };

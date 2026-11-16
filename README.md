@@ -1,7 +1,8 @@
 # ScreenCap
 
 `screencap` captures a display or a window to a PNG (or records an MP4) on macOS, Windows and Linux,
-and prints the file's path. `screencap --help` lists the options.
+and prints the file's path. `screencap --help` lists the options; `screencap --version` prints the
+version and the commit it was built from, e.g. `screencap 0.1.0+f30059f`.
 
 ## Over ssh
 
