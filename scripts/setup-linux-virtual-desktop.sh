@@ -12,6 +12,11 @@
 # then `screencap` or `screencap --window <title>` from any ssh session.
 set -euo pipefail
 
+if ! command -v nix > /dev/null; then
+    echo "screencap setup needs nix (https://nixos.org/download) to fetch Xvfb and openbox, and nix is not installed: install nix and run screencap setup again, or install Xvfb and openbox with your package manager and run 'Xvfb :90 &' then 'DISPLAY=:90 openbox &' yourself" >&2
+    exit 1
+fi
+
 display=":90"
 screen_size="1920x1080x24"
 seconds_to_wait_for_desktop=10

@@ -2,8 +2,9 @@
 # Builds screencap on this machine and captures display 1 the way this OS
 # allows from an ssh session, printing "CAPTURED <path>".
 #   macOS, Windows: runs it directly; screencap reaches the logged-in desktop itself.
-#   Linux:   screencap finds the logged-in user's X11 display; with nobody logged in
-#            this starts Xvfb with an xterm on it. Tools come from nix-shell when not installed.
+#   Linux:   puts an xterm on the screencap-desktop service's display (:90, from
+#            screencap setup), which screencap finds by itself, or else on its own Xvfb on :77.
+#            Tools come from nix-shell when not installed.
 set -euo pipefail
 
 out="$HOME/screencap-test.png"
@@ -28,13 +29,17 @@ Linux)
     run_in_tools "
         set -euo pipefail
         just build
-        if ! ./build/screencap --list > /dev/null 2>&1; then
+        if systemctl --user is-active --quiet screencap-desktop.service; then
+            unset DISPLAY
+            test_display=:90
+        else
             Xvfb :77 -screen 0 1280x800x24 > /dev/null 2>&1 & xvfb=\$!
             export DISPLAY=:77
+            test_display=:77
             sleep 1
-            xterm -geometry 80x24+100+100 -title screencap-xterm -e 'echo hello from screencap; sleep 30' > /dev/null 2>&1 & xterm=\$!
-            sleep 2
         fi
+        DISPLAY=\$test_display xterm -geometry 80x24+100+100 -title screencap-xterm -e 'echo hello from screencap; sleep 30' > /dev/null 2>&1 & xterm=\$!
+        sleep 2
         ./build/screencap --list
         ./build/screencap --window screencap-xterm --out '$HOME/screencap-test-window.png'
         ./build/screencap --out '$out'

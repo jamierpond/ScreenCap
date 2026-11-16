@@ -17,7 +17,7 @@ if (APPLE)
     enable_language(OBJCXX)
     set(CMAKE_OSX_DEPLOYMENT_TARGET 14.0)
     set(platformSource Source/Capture-macOS.mm Source/VideoEncoder-macOS.mm Source/Responsibility-macOS.cpp
-            Source/Permissions-macOS.cpp)
+            Source/Permissions-macOS.cpp Source/Setup-macOS.cpp)
 
     lockstep_add_package(
             NAME eacp
@@ -37,10 +37,10 @@ if (APPLE)
             OPTIONS "RUDDER_CLIENT_ONLY ON")
 elseif (WIN32)
     set(platformSource Source/Capture-Windows.cpp Source/VideoEncoder-Windows.cpp Source/Permissions-Default.cpp
-            Source/DesktopSession-Windows.cpp)
+            Source/DesktopSession-Windows.cpp Source/Setup-Windows.cpp)
 else ()
     set(platformSource Source/Capture-Linux.cpp Source/VideoEncoder-Linux.cpp Source/Permissions-Default.cpp
-            Source/DesktopSession-Linux.cpp)
+            Source/DesktopSession-Linux.cpp Source/Setup-Linux.cpp)
 endif ()
 
 add_executable(screencap Source/Main.cpp Source/Capture.cpp Source/Recorder.cpp ${platformSource})
@@ -70,4 +70,12 @@ else ()
     # X11::X11 carries only the directory holding X11/X.h. Under nix that is xorgproto, and Xlib.h lives in libx11.
     target_include_directories(screencap SYSTEM PRIVATE ${X11_INCLUDE_DIR})
     target_link_libraries(screencap PRIVATE X11::X11)
+
+    # `screencap setup` runs this script, built into the binary because the installed screencap is one file.
+    set(linuxSetupScriptPath ${CMAKE_CURRENT_SOURCE_DIR}/scripts/setup-linux-virtual-desktop.sh)
+    set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${linuxSetupScriptPath})
+    file(READ ${linuxSetupScriptPath} linuxSetupScript)
+    file(CONFIGURE OUTPUT ${CMAKE_BINARY_DIR}/generated/LinuxSetupScript.h @ONLY CONTENT
+            "#pragma once\n\nnamespace screencap\n{\nconstexpr auto linuxSetupScript = R\"setup_script(@linuxSetupScript@)setup_script\";\n}\n")
+    target_include_directories(screencap PRIVATE ${CMAKE_BINARY_DIR}/generated)
 endif ()

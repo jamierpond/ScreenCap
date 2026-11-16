@@ -1,19 +1,25 @@
 #include "Capture.h"
+#include "VirtualDesktopAdvice-Linux.h"
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 
 #include <algorithm>
+#include <cstdlib>
 #include <optional>
 
 namespace screencap
 {
 namespace
 {
-constexpr auto noX11Message =
-    "cannot open the X11 display ($DISPLAY). On a Wayland session without XWayland, "
-    "screencap can't capture: Wayland only allows it through the desktop portal, which asks "
-    "the user every time. Log in to an X11 session, or run under Xvfb";
+std::string describeUnopenableDisplay()
+{
+    const auto* const display = std::getenv("DISPLAY");
+    const auto displayName = std::string {display == nullptr ? "" : display};
+    return "cannot open the X11 display DISPLAY=" + displayName
+           + ": no X11 server is running there, or it refuses this user. "
+           + virtualDesktopAdvice;
+}
 
 class X11Connection
 {
@@ -207,7 +213,7 @@ CaptureResult captureDisplay(int displayNumber)
     const auto connection = X11Connection {};
 
     if (!connection.isOpen())
-        return {.error = noX11Message};
+        return {.error = describeUnopenableDisplay()};
 
     if (displayNumber > ScreenCount(connection.display))
         return {.error = "no display " + std::to_string(displayNumber) + " (screencap --list)"};
@@ -223,7 +229,7 @@ CaptureResult captureWindow(const std::string& titleOrAppName)
     const auto connection = X11Connection {};
 
     if (!connection.isOpen())
-        return {.error = noX11Message};
+        return {.error = describeUnopenableDisplay()};
 
     const auto window = findLargestMatchingWindow(connection.display, titleOrAppName);
 
@@ -249,7 +255,7 @@ std::vector<std::string> listCaptureTargets()
     const auto connection = X11Connection {};
 
     if (!connection.isOpen())
-        return {std::string {"screencap: "} + noX11Message};
+        return {"screencap: " + describeUnopenableDisplay()};
 
     auto lines = std::vector<std::string> {};
 

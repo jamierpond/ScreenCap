@@ -1,5 +1,7 @@
 #include "DesktopSession.h"
 
+#include "VirtualDesktopAdvice-Linux.h"
+
 #include <cstdio>
 #include <cstdlib>
 #include <filesystem>
@@ -18,18 +20,18 @@ namespace
 {
 constexpr int exitFailed = 1;
 
-constexpr auto waylandOnlyMessage =
-    "screencap: your desktop session is Wayland with no X11 display. Wayland lets a program see the "
-    "screen only through the desktop portal, which asks the person at the screen every time, so "
-    "screencap can't capture it over ssh. Log in to an X11 session instead\n";
+constexpr auto waylandOnlyProblem =
+    "screencap: your desktop is Wayland with no X11 display. Wayland shows the screen to a program "
+    "only through the desktop portal, which asks the person at the screen every time, so screencap "
+    "cannot capture it.";
 
 constexpr auto xwaylandNote =
     "screencap: this desktop is Wayland; through its X11 display (XWayland) screencap sees only "
     "X11 windows, and Wayland windows come out black\n";
 
-constexpr auto noSessionNote =
-    "screencap: $DISPLAY is not set and none of your processes has one: nobody is logged in to a "
-    "desktop as you (the login screen does not count)\n";
+constexpr auto noSessionProblem =
+    "screencap: there is no X11 display to capture. $DISPLAY is not set and none of your processes "
+    "has one, because nobody is logged in to a desktop as you (the login screen does not count).";
 
 using Environment = std::map<std::string, std::string>;
 
@@ -113,7 +115,7 @@ void useVariableFrom(const Environment& environment, const char* name)
 
 std::optional<int> runInUserDesktopSession(char**)
 {
-    if (hasVariable("DISPLAY") || hasVariable("WAYLAND_DISPLAY"))
+    if (hasVariable("DISPLAY"))
         return std::nullopt;
 
     const auto session = findGraphicalSession();
@@ -129,13 +131,12 @@ std::optional<int> runInUserDesktopSession(char**)
         return std::nullopt;
     }
 
-    if (session.hasWaylandDisplay)
-    {
-        std::fputs(waylandOnlyMessage, stderr);
-        return exitFailed;
-    }
+    auto problem = noSessionProblem;
 
-    std::fputs(noSessionNote, stderr);
-    return std::nullopt;
+    if (session.hasWaylandDisplay || hasVariable("WAYLAND_DISPLAY"))
+        problem = waylandOnlyProblem;
+
+    std::fprintf(stderr, "%s %s\n", problem, virtualDesktopAdvice);
+    return exitFailed;
 }
 } // namespace screencap

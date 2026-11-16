@@ -2,6 +2,7 @@
 #include "DesktopSession.h"
 #include "Permissions.h"
 #include "Recorder.h"
+#include "Setup.h"
 
 #include <algorithm>
 #include <chrono>
@@ -29,6 +30,7 @@ constexpr auto usage = R"(usage: screencap [--display <n> | --window <title or a
        screencap [--display <n> | --window <title or app>] --record <file.mp4> --seconds <s>
                  [--fps <n>]
        screencap --list
+       screencap setup
        screencap permissions
        screencap remove-all-permissions
 
@@ -38,6 +40,9 @@ the largest match wins. --list prints the displays and windows it can see.
 Without --out the PNG goes to the system temp folder.
 --record writes an H.264 MP4 (default 15 fps), video only for now. On Linux it
 needs ffmpeg on PATH.
+setup readies this machine for capture. Linux: installs a virtual X11 desktop on
+DISPLAY=:90 that runs at boot with nobody logged in (needs nix). macOS: the same
+as permissions. Windows: nothing to do.
 permissions opens ScreenCap's Permissions window (macOS): each grant's live
 state, the app to drag into System Settings, reset and relaunch. A capture
 macOS refuses opens it too.
@@ -221,20 +226,37 @@ int captureAndWrite(const Options& options)
     std::printf("%s\n", path.string().c_str());
     return exitOk;
 }
+struct NamedCommand
+{
+    std::vector<std::string> arguments;
+    int (*run)();
+};
+
+std::optional<int> runNamedCommand(const std::vector<std::string>& args)
+{
+    const auto commands = std::vector<NamedCommand> {
+        {{screencap::setupCommand}, screencap::prepareMachineForCapture},
+        {{"remove-all-permissions"}, screencap::removeAllPermissions},
+        {{screencap::permissionsCommand, screencap::permissionsWindowFlag}, screencap::runPermissionsWindow},
+        {{screencap::permissionsCommand}, screencap::openPermissionsWindow},
+    };
+
+    for (const auto& command: commands)
+    {
+        if (command.arguments == args)
+            return command.run();
+    }
+
+    return std::nullopt;
+}
 } // namespace
 
 int main(int argc, char** argv)
 {
     const auto args = std::vector<std::string>(argv + 1, argv + argc);
 
-    if (args == std::vector<std::string> {"remove-all-permissions"})
-        return screencap::removeAllPermissions();
-
-    if (args == std::vector<std::string> {screencap::permissionsCommand, screencap::permissionsWindowFlag})
-        return screencap::runPermissionsWindow();
-
-    if (args == std::vector<std::string> {screencap::permissionsCommand})
-        return screencap::openPermissionsWindow();
+    if (const auto commandExitCode = runNamedCommand(args))
+        return *commandExitCode;
 
     if (const auto childExitCode = screencap::runInUserDesktopSession(argv))
         return *childExitCode;
