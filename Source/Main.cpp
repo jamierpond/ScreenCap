@@ -207,17 +207,15 @@ int recordAndWrite(const Options& options)
     return exitOk;
 }
 
-int captureAndWrite(const Options& options)
+int writeCapture(const screencap::CaptureResult& result, const std::optional<fs::path>& outputPath)
 {
-    const auto result = captureTarget(options);
-
     if (!result.hasImage())
     {
         std::fprintf(stderr, "screencap: %s\n", result.error.c_str());
         return result.isPermissionDenied ? reportPermissionDenied() : exitFailed;
     }
 
-    const auto path = fs::absolute(options.outputPath.value_or(createDefaultOutputPath()));
+    const auto path = fs::absolute(outputPath.value_or(createDefaultOutputPath()));
 
     if (!writePng(result.image, path))
     {
@@ -228,6 +226,12 @@ int captureAndWrite(const Options& options)
     std::printf("%s\n", path.string().c_str());
     return exitOk;
 }
+
+int captureAndWrite(const Options& options)
+{
+    return writeCapture(captureTarget(options), options.outputPath);
+}
+
 constexpr auto testCaptureFileName = "screencap-setup-test.png";
 
 constexpr auto permissionMissingAfterSetup =
@@ -248,9 +252,14 @@ int takeTestCapture(const fs::path& executable, const fs::path& path)
     if (const auto childExitCode = screencap::runInUserDesktopSession(argumentPointers.data()))
         return *childExitCode;
 
-    auto options = Options {};
-    options.outputPath = path;
-    return captureAndWrite(options);
+    const auto testCapture = screencap::takeSetupTestCapture();
+    const auto exitCode = writeCapture(testCapture.capture, path);
+
+    if (exitCode != exitOk || testCapture.mismatch.empty())
+        return exitCode;
+
+    std::fprintf(stderr, "screencap setup: %s\n", testCapture.mismatch.c_str());
+    return exitFailed;
 }
 
 int runSetup(const fs::path& executable)

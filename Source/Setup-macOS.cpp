@@ -82,4 +82,9 @@ int prepareMachineForCapture()
 
     return exitOk;
 }
+
+SetupTestCapture takeSetupTestCapture()
+{
+    return {.capture = captureDisplay(setupTestDisplayNumber), .mismatch = {}};
+}
 } // namespace screencap

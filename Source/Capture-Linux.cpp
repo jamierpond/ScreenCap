@@ -1,5 +1,6 @@
 #include "Capture.h"
 #include "VirtualDesktopAdvice-Linux.h"
+#include "X11Connection-Linux.h"
 
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
@@ -10,6 +11,22 @@
 
 namespace screencap
 {
+X11Connection::X11Connection()
+    : display(XOpenDisplay(nullptr))
+{
+}
+
+X11Connection::~X11Connection()
+{
+    if (display != nullptr)
+        XCloseDisplay(display);
+}
+
+bool X11Connection::isOpen() const
+{
+    return display != nullptr;
+}
+
 namespace
 {
 std::string describeUnopenableDisplay()
@@ -20,28 +37,6 @@ std::string describeUnopenableDisplay()
            + ": no X11 server is running there, or it refuses this user. "
            + virtualDesktopAdvice;
 }
-
-class X11Connection
-{
-public:
-    X11Connection()
-        : display(XOpenDisplay(nullptr))
-    {
-    }
-
-    ~X11Connection()
-    {
-        if (display != nullptr)
-            XCloseDisplay(display);
-    }
-
-    X11Connection(const X11Connection&) = delete;
-    X11Connection& operator=(const X11Connection&) = delete;
-
-    bool isOpen() const { return display != nullptr; }
-
-    Display* display;
-};
 
 struct ScreenRect
 {

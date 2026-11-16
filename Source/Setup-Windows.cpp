@@ -91,4 +91,9 @@ int prepareMachineForCapture()
                  userName.c_str(), userName.c_str(), userName.c_str(), userName.c_str());
     return exitFailed;
 }
+
+SetupTestCapture takeSetupTestCapture()
+{
+    return {.capture = captureDisplay(setupTestDisplayNumber), .mismatch = {}};
+}
 } // namespace screencap

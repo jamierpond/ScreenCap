@@ -40,7 +40,7 @@ elseif (WIN32)
             Source/DesktopSession-Windows.cpp Source/Setup-Windows.cpp)
 else ()
     set(platformSource Source/Capture-Linux.cpp Source/VideoEncoder-Linux.cpp Source/Permissions-Default.cpp
-            Source/DesktopSession-Linux.cpp Source/Setup-Linux.cpp)
+            Source/DesktopSession-Linux.cpp Source/Setup-Linux.cpp Source/SetupTestPattern-Linux.cpp)
 endif ()
 
 add_executable(screencap Source/Main.cpp Source/Capture.cpp Source/Recorder.cpp ${platformSource})
