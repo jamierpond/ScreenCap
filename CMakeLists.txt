@@ -22,7 +22,7 @@ if (APPLE)
     lockstep_add_package(
             NAME eacp
             GITHUB_REPOSITORY eyalamirmusic/eacp
-            GIT_TAG jp/develop
+            GIT_TAG develop
             SYSTEM YES
             OPTIONS
                 "EACP_ENABLE_EXAMPLES OFF"
