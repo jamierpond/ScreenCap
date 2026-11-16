@@ -19,3 +19,8 @@ install: build
 [doc('Clone/pull, build and capture on an ssh host, then copy the PNG back')]
 remote-test host:
     bash scripts/remote-test.sh {{host}}
+
+[doc("Build everything, then run clang-tidy (eacp's checks) over ScreenCap's sources; fails on any finding")]
+[unix]
+tidy: build
+    scripts/tidy.sh {{build_dir}}
