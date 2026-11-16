@@ -15,7 +15,8 @@ ssh "$host" "cd ~/projects/ScreenCap-setup && just build < /dev/null > build.log
     ./build/screencap setup < /dev/null" > "$log" 2>&1 && status=0 || status=$?
 
 cat "$log"
-remote_png="$(grep -E '^(/|[A-Za-z]:).*screencap-setup-test\.png' "$log" | tail -1 | tr -d '\r' || true)"
+# scp to a Windows host finds C:/Users/... and not C:\Users\..., so backslashes become slashes.
+remote_png="$(grep -E '^(/|[A-Za-z]:).*screencap-setup-test\.png' "$log" | tail -1 | tr -d '\r' | tr '\\' '/' || true)"
 
 if [[ -n "$remote_png" ]]; then
     scp -q "$host:$remote_png" "$local_png"
