@@ -19,16 +19,17 @@ int roundDownToEven(int size)
 
 Image cropToSize(const Image& frame, int width, int height)
 {
-    constexpr auto bytesPerPixel = 4;
+    constexpr auto bytesPerPixel = std::size_t {4};
 
     auto cropped = Image {width, height, {}};
-    cropped.rgba.resize(static_cast<std::size_t>(width * height * bytesPerPixel));
-    const auto rowBytes = static_cast<std::size_t>(width * bytesPerPixel);
-    const auto copyBytes = static_cast<std::size_t>(std::min(width, frame.width) * bytesPerPixel);
+    const auto rowBytes = static_cast<std::size_t>(width) * bytesPerPixel;
+    cropped.rgba.resize(rowBytes * static_cast<std::size_t>(height));
+    const auto copyBytes = static_cast<std::size_t>(std::min(width, frame.width)) * bytesPerPixel;
+    const auto sourceRowBytes = static_cast<std::size_t>(frame.width) * bytesPerPixel;
 
     for (auto row = 0; row < std::min(height, frame.height); ++row)
     {
-        const auto sourceOffset = static_cast<std::size_t>(row * frame.width * bytesPerPixel);
+        const auto sourceOffset = static_cast<std::size_t>(row) * sourceRowBytes;
         std::copy_n(frame.rgba.begin() + static_cast<long>(sourceOffset), copyBytes,
                     cropped.rgba.begin() + static_cast<long>(row * rowBytes));
     }

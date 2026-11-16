@@ -44,7 +44,8 @@ Image readBitmapPixels(HDC deviceContext, HBITMAP bitmap, int width, int height)
     header.bmiHeader.biCompression = BI_RGB;
 
     auto image = Image {width, height, {}};
-    image.rgba.resize(static_cast<std::size_t>(width * height * bytesPerPixel));
+    const auto pixelCount = static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
+    image.rgba.resize(pixelCount * bytesPerPixel);
     const auto rowCount = static_cast<UINT>(height);
     GetDIBits(deviceContext, bitmap, 0, rowCount, image.rgba.data(), &header, DIB_RGB_COLORS);
 

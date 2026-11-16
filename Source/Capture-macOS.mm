@@ -49,7 +49,8 @@ Image copyPixels(CGImageRef cgImage)
     auto image = Image {};
     image.width = static_cast<int>(CGImageGetWidth(cgImage));
     image.height = static_cast<int>(CGImageGetHeight(cgImage));
-    image.rgba.resize(static_cast<std::size_t>(image.width * image.height * bytesPerPixel));
+    const auto pixelCount = static_cast<std::size_t>(image.width) * static_cast<std::size_t>(image.height);
+    image.rgba.resize(pixelCount * bytesPerPixel);
 
     const auto colourSpace = CGColorSpaceCreateWithName(kCGColorSpaceSRGB);
     const auto bitmapInfo = static_cast<uint32_t>(kCGImageAlphaPremultipliedLast)

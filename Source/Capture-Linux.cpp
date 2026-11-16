@@ -77,7 +77,7 @@ CaptureResult captureRootRect(Display* display, int screen, const ScreenRect& re
 {
     const auto width = rect.width;
     const auto height = rect.height;
-    constexpr auto bytesPerPixel = 4;
+    constexpr auto bytesPerPixel = std::size_t {4};
     constexpr auto opaque = std::uint8_t {255};
 
     const auto root = RootWindow(display, screen);
@@ -88,7 +88,8 @@ CaptureResult captureRootRect(Display* display, int screen, const ScreenRect& re
         return {.error = "XGetImage failed"};
 
     auto image = Image {width, height, {}};
-    image.rgba.resize(static_cast<std::size_t>(width * height * bytesPerPixel));
+    const auto pixelCount = static_cast<std::size_t>(width) * static_cast<std::size_t>(height);
+    image.rgba.resize(pixelCount * bytesPerPixel);
     auto* out = image.rgba.data();
 
     for (auto row = 0; row < height; ++row)
