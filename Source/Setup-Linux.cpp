@@ -6,8 +6,7 @@
 #include <optional>
 #include <spawn.h>
 #include <sys/wait.h>
-
-extern char** environ;
+#include <unistd.h>
 
 namespace screencap
 {
