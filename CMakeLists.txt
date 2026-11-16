@@ -67,5 +67,7 @@ elseif (WIN32)
     target_link_libraries(screencap PRIVATE user32 gdi32 dwmapi shcore ole32 mfplat mfreadwrite mfuuid)
 else ()
     find_package(X11 REQUIRED)
+    # X11::X11 carries only the directory holding X11/X.h. Under nix that is xorgproto, and Xlib.h lives in libx11.
+    target_include_directories(screencap SYSTEM PRIVATE ${X11_INCLUDE_DIR})
     target_link_libraries(screencap PRIVATE X11::X11)
 endif ()
